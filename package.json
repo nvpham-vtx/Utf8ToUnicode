@@ -1,36 +1,800 @@
+./app/index.html
+
+<!DOCTYPE html>
+<header>
+	<title>VinhPN</title>
+</header>
+<html>
+<head>
+	<meta charset="UTF-8">
+</head>
+<!--build:js js/main.min.js -->
+<script src="js/libs/angular.js"></script>
+<script src="js/libs/jquery-1.11.3.js"></script>\
+<script src="js/libs/lodash.js"></script>
+<script src="js/libs/xml2json.js"></script>
+<script src="js/libs/xml-beauty.js"></script>
+<script src="js/controllers/index.controller.js"></script>
+<script src="js/directives/xml-viewer.js"></script>
+<!-- endbuild -->
+<!--build:css css/main.css -->
+<link href="css/bootstrap.min.css" rel="stylesheet" type="text/css">
+<link href="css/animation.css" rel="stylesheet" type="text/css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
+<!-- endbuild -->
+<body>
+
+<div ng-app="myApp" ng-controller="myCtrl" style="padding: 20px;">
+<div class="row">
+	<div class="container" style="text-align: center;">
+		<h1>{{aws.lang === 'en-US' ? 'Convert Utf-8 to Unicode' : 'Chuyển đổi dữ liệu sang tiếng Việt'}}</h1>
+		<p style="color:red; margin-top: 10px;"><i>{{aws.lang === 'en-US' ? '(Copyright by VinhPN)' : '(Bản quyền thuộc về VinhPN)' }}</i></p>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-xl-6 col-lg-6">
+		<div class="card shadow mb-4">
+			<div class="card-header flex-row align-items-center justify-content-between" style="text-align:center">
+				<h6 class="m-0 font-weight-bold text-primary">{{aws.lang === 'en-US' ? 'Input' : 'Nhập dữ liệu'}}</h6>
+			</div>
+			<div class="card-body">
+				<textarea placeholder="{{aws.lang === 'en-US' ? 'Oh my god, so many things to do but still have to do tools' : 'Trời ơi nhiều việc quá mà vẫn phải làm tool!!!!!!'}}" 
+				class="form-control" rows="30" ng-change="aws.changeInput(aws.input)" ng-model="aws.input"></textarea>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-xl-6 col-lg-6">
+		<div class="card shadow mb-4">
+			<div class="card-header flex-row align-items-center justify-content-between">
+				<h6 class="m-0 font-weight-bold text-primary" style="text-align:center">{{aws.lang === 'en-US' ? 'Output' : 'Hiển thị dữ liệu'}}</h6>
+			</div>
+			<div class="card-body">
+				<textarea class="form-control" rows="5" ng-model="aws.output"></textarea>
+				<div ng-if="!aws.inValidData">
+					<div class="span span50" ng-if="!aws.isXmlView">
+						<div ng-if="aws.jsonData" style="margin-top: 10px; font-size: 20px; font-weight: bold;">JSON Viewer</div>
+						<pre style="background-color: rgba(236, 255, 220, 0.47);"><code>{{aws.jsonData | json}}</code></pre>
+					</div>
+					<div class="span span50" ng-if="aws.isXmlView">
+						<div style="margin-top: 10px; font-size: 20px; font-weight: bold;">XML Viewer</div>
+						<pre class="xml-viewer" style="background-color: rgba(224, 220, 255, 0.47);"></pre>
+						<div style="margin-top: 10px; font-size: 20px; font-weight: bold;">JSON Viewer</div>
+						<pre style="background-color: rgba(236, 255, 220, 0.47);"><code>{{aws.jsonData | json}}</code></pre>
+					</div>
+				</div>
+				<div ng-if="aws.inValidData" class="warning" style="background-color: rgba(245, 0, 0, 0.979);
+				 color: white; margin-top: 10px;">
+					<span ng-if="aws.lang !=='en-US'">Chuỗi bạn nhập đéo phải dạng json hay xml đâu nhé, Nhập lại đi bạn êi </span> 
+					<span ng-if="aws.lang ==='en-US'">The string you entered is not json or xml, Please check again if you want to show it here </span> 
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+</div>                				
+</body>
+</html>
+
+../app/css
+bootstrap.min.css
+
+../app/libs
+xml-beauty.js
+xml2json.js
+lodash.js
+jquery-1.11.3.js
+angular.js
+
+..\app\js\directives\xml-viewer.js
+app.directive('xmlViewer', function() {
+    return {
+      restrict: 'C',
+      link: function postLink(scope, element, attrs) {
+        scope.$watch('aws.input', function() {
+          if(_.get(scope, "aws.input") && scope.isXML(scope.aws.input.replaceAll("\\",""))) {
+            element.text(vkbeautify.xml(scope.utf8ToUnicode(scope.aws.input.replaceAll("\\","")), 4));
+          }
+        });
+      }
+    };
+  });
+
+
+../app/js/index.controller.js
+var app = angular.module('myApp', []);
+
+app.controller('myCtrl',['$scope', function($scope) {
+		$scope.aws = {};
+        $scope.aws.lang = window.navigator.language;
+        $scope.aws.changeInput = function(input) {
+            _.set($scope, "aws.inValidData", false);
+            var unicodeStr = $scope.utf8ToUnicode(input.replaceAll("\\",""));
+            _.set($scope, "aws.output", unicodeStr);
+            if($scope.isXML(input.replaceAll("\\","")) && unicodeStr) {
+                _.set($scope, "aws.isXmlView", true);
+                _.set($scope, "aws.jsonData", xmlToJSON.parseString(unicodeStr));
+            }else if($scope.isJson(unicodeStr) && unicodeStr) {
+                _.set($scope, "aws.jsonData", JSON.parse(unicodeStr));
+            }else {
+                _.set($scope, "aws.inValidData", true);
+            }
+        }
+
+        $scope.utf8ToUnicode = function(str) {
+            var expressions = {
+                "xe1xbax80": String.fromCharCode(7808),
+                "xe1xbax81": String.fromCharCode(7809),
+                "xe1xbax82": String.fromCharCode(7810),
+                "xe1xbax83": String.fromCharCode(7811),
+                "xe1xbax84": String.fromCharCode(7812),
+                "xe1xbax85": String.fromCharCode(7813),
+                "xe1xbax86": String.fromCharCode(7814),
+                "xe1xbax87": String.fromCharCode(7815),
+                "xe1xbax88": String.fromCharCode(7816),
+                "xe1xbax89": String.fromCharCode(7817),
+                "xe1xbax8a": String.fromCharCode(7818),
+                "xe1xbax8b": String.fromCharCode(7819),
+                "xe1xbax8c": String.fromCharCode(7820),
+                "xe1xbax8d": String.fromCharCode(7821),
+                "xe1xbax8e": String.fromCharCode(7822),
+                "xe1xbax8f": String.fromCharCode(7823),
+                "xe1xbax90": String.fromCharCode(7824),
+                "xe1xbax91": String.fromCharCode(7825),
+                "xe1xbax92": String.fromCharCode(7826),
+                "xe1xbax93": String.fromCharCode(7827),
+                "xe1xbax94": String.fromCharCode(7828),
+                "xe1xbax95": String.fromCharCode(7829),
+                "xe1xbax96": String.fromCharCode(7830),
+                "xe1xbax97": String.fromCharCode(7831),
+                "xe1xbax98": String.fromCharCode(7832),
+                "xe1xbax99": String.fromCharCode(7833),
+                "xe1xbax9a": String.fromCharCode(7834),
+                "xe1xbax9b": String.fromCharCode(7835),
+                "xe1xbax9c": String.fromCharCode(7836),
+                "xe1xbax9d": String.fromCharCode(7837),
+                "xe1xbax9e": String.fromCharCode(7838),
+                "xe1xbax9f": String.fromCharCode(7839),
+                "xe1xbaxa0": String.fromCharCode(7840),
+                "xe1xbaxa1": String.fromCharCode(7841),
+                "xe1xbaxa2": String.fromCharCode(7842),
+                "xe1xbaxa3": String.fromCharCode(7843),
+                "xe1xbaxa4": String.fromCharCode(7844),
+                "xe1xbaxa5": String.fromCharCode(7845),
+                "xe1xbaxa6": String.fromCharCode(7846),
+                "xe1xbaxa7": String.fromCharCode(7847),
+                "xe1xbaxa8": String.fromCharCode(7848),
+                "xe1xbaxa9": String.fromCharCode(7849),
+                "xe1xbaxaa": String.fromCharCode(7850),
+                "xe1xbaxab": String.fromCharCode(7851),
+                "xe1xbaxac": String.fromCharCode(7852),
+                "xe1xbaxad": String.fromCharCode(7853),
+                "xe1xbaxae": String.fromCharCode(7854),
+                "xe1xbaxaf": String.fromCharCode(7855),
+                "xe1xbaxb0": String.fromCharCode(7856),
+                "xe1xbaxb1": String.fromCharCode(7857),
+                "xe1xbaxb2": String.fromCharCode(7858),
+                "xe1xbaxb3": String.fromCharCode(7859),
+                "xe1xbaxb4": String.fromCharCode(7860),
+                "xe1xbaxb5": String.fromCharCode(7861),
+                "xe1xbaxb6": String.fromCharCode(7862),
+                "xe1xbaxb7": String.fromCharCode(7863),
+                "xe1xbaxb8": String.fromCharCode(7864),
+                "xe1xbaxb9": String.fromCharCode(7865),
+                "xe1xbaxba": String.fromCharCode(7866),
+                "xe1xbaxbb": String.fromCharCode(7867),
+                "xe1xbaxbc": String.fromCharCode(7868),
+                "xe1xbaxbd": String.fromCharCode(7869),
+                "xe1xbaxbe": String.fromCharCode(7870),
+                "xe1xbaxbf": String.fromCharCode(7871),
+                "xe1xbbx80": String.fromCharCode(7872),
+                "xe1xbbx81": String.fromCharCode(7873),
+                "xe1xbbx82": String.fromCharCode(7874),
+                "xe1xbbx83": String.fromCharCode(7875),
+                "xe1xbbx84": String.fromCharCode(7876),
+                "xe1xbbx85": String.fromCharCode(7877),
+                "xe1xbbx86": String.fromCharCode(7878),
+                "xe1xbbx87": String.fromCharCode(7879),
+                "xe1xbbx88": String.fromCharCode(7880),
+                "xe1xbbx89": String.fromCharCode(7881),
+                "xe1xbbx8a": String.fromCharCode(7882),
+                "xe1xbbx8b": String.fromCharCode(7883),
+                "xe1xbbx8c": String.fromCharCode(7884),
+                "xe1xbbx8d": String.fromCharCode(7885),
+                "xe1xbbx8e": String.fromCharCode(7886),
+                "xe1xbbx8f": String.fromCharCode(7887),
+                "xe1xbbx90": String.fromCharCode(7888),
+                "xe1xbbx91": String.fromCharCode(7889),
+                "xe1xbbx92": String.fromCharCode(7890),
+                "xe1xbbx93": String.fromCharCode(7891),
+                "xe1xbbx94": String.fromCharCode(7892),
+                "xe1xbbx95": String.fromCharCode(7893),
+                "xe1xbbx96": String.fromCharCode(7894),
+                "xe1xbbx97": String.fromCharCode(7895),
+                "xe1xbbx98": String.fromCharCode(7896),
+                "xe1xbbx99": String.fromCharCode(7897),
+                "xe1xbbx9a": String.fromCharCode(7898),
+                "xe1xbbx9b": String.fromCharCode(7899),
+                "xe1xbbx9c": String.fromCharCode(7900),
+                "xe1xbbx9d": String.fromCharCode(7901),
+                "xe1xbbx9e": String.fromCharCode(7902),
+                "xe1xbbx9f": String.fromCharCode(7903),
+                "xe1xbbxa0": String.fromCharCode(7904),
+                "xe1xbbxa1": String.fromCharCode(7905),
+                "xe1xbbxa2": String.fromCharCode(7906),
+                "xe1xbbxa3": String.fromCharCode(7907),
+                "xe1xbbxa4": String.fromCharCode(7908),
+                "xe1xbbxa5": String.fromCharCode(7909),
+                "xe1xbbxa6": String.fromCharCode(7910),
+                "xe1xbbxa7": String.fromCharCode(7911),
+                "xe1xbbxa8": String.fromCharCode(7912),
+                "xe1xbbxa9": String.fromCharCode(7913),
+                "xe1xbbxaa": String.fromCharCode(7914),
+                "xe1xbbxab": String.fromCharCode(7915),
+                "xe1xbbxac": String.fromCharCode(7916),
+                "xe1xbbxad": String.fromCharCode(7917),
+                "xe1xbbxae": String.fromCharCode(7918),
+                "xe1xbbxaf": String.fromCharCode(7919),
+                "xe1xbbxb0": String.fromCharCode(7920),
+                "xe1xbbxb1": String.fromCharCode(7921),
+                "xe1xbbxb2": String.fromCharCode(7922),
+                "xe1xbbxb3": String.fromCharCode(7923),
+                "xe1xbbxb4": String.fromCharCode(7924),
+                "xe1xbbxb5": String.fromCharCode(7925),
+                "xe1xbbxb6": String.fromCharCode(7926),
+                "xe1xbbxb7": String.fromCharCode(7927),
+                "xe1xbbxb8": String.fromCharCode(7928),
+                "xe1xbbxb9": String.fromCharCode(7929),
+                "xe1xbbxba": String.fromCharCode(7930),
+                "xe1xbbxbb": String.fromCharCode(7931),
+                "xe1xbbxbc": String.fromCharCode(7932),
+                "xe1xbbxbd": String.fromCharCode(7933),
+                "xe1xbbxbe": String.fromCharCode(7934),
+                "xe1xbbxbf": String.fromCharCode(7935),
+                "xe1xbcx80": String.fromCharCode(7936),
+                "xe1xbcx81": String.fromCharCode(7937),
+                "xe1xbcx82": String.fromCharCode(7938),
+                "xe1xbcx83": String.fromCharCode(7939),
+                "xe1xbcx84": String.fromCharCode(7940),
+                "xe1xbcx85": String.fromCharCode(7941),
+                "xe1xbcx86": String.fromCharCode(7942),
+                "xe1xbcx87": String.fromCharCode(7943),
+                "xe1xbcx88": String.fromCharCode(7944),
+                "xe1xbcx89": String.fromCharCode(7945),
+                "xe1xbcx8a": String.fromCharCode(7946),
+                "xe1xbcx8b": String.fromCharCode(7947),
+                "xe1xbcx8c": String.fromCharCode(7948),
+                "xe1xbcx8d": String.fromCharCode(7949),
+                "xe1xbcx8e": String.fromCharCode(7950),
+                "xe1xbcx8f": String.fromCharCode(7951),
+                "xe1xbcx90": String.fromCharCode(7952),
+                "xe1xbcx91": String.fromCharCode(7953),
+                "xe1xbcx92": String.fromCharCode(7954),
+                "xe1xbcx93": String.fromCharCode(7955),
+                "xe1xbcx94": String.fromCharCode(7956),
+                "xe1xbcx95": String.fromCharCode(7957),
+                "xe1xbcx96": String.fromCharCode(7958),
+                "xe1xbcx97": String.fromCharCode(7959),
+                "xe1xbcx98": String.fromCharCode(7960),
+                "xe1xbcx99": String.fromCharCode(7961),
+                "xe1xbcx9a": String.fromCharCode(7962),
+                "xe1xbcx9b": String.fromCharCode(7963),
+                "xe1xbcx9c": String.fromCharCode(7964),
+                "xe1xbcx9d": String.fromCharCode(7965),
+                "xe1xbcx9e": String.fromCharCode(7966),
+                "xe1xbcx9f": String.fromCharCode(7967),
+                "xe1xbcxa0": String.fromCharCode(7968),
+                "xe1xbcxa1": String.fromCharCode(7969),
+                "xe1xbcxa2": String.fromCharCode(7970),
+                "xe1xbcxa3": String.fromCharCode(7971),
+                "xe1xbcxa4": String.fromCharCode(7972),
+                "xe1xbcxa5": String.fromCharCode(7973),
+                "xe1xbcxa6": String.fromCharCode(7974),
+                "xe1xbcxa7": String.fromCharCode(7975),
+                "xe1xbcxa8": String.fromCharCode(7976),
+                "xe1xbcxa9": String.fromCharCode(7977),
+                "xe1xbcxaa": String.fromCharCode(7978),
+                "xe1xbcxab": String.fromCharCode(7979),
+                "xe1xbcxac": String.fromCharCode(7980),
+                "xe1xbcxad": String.fromCharCode(7981),
+                "xe1xbcxae": String.fromCharCode(7982),
+                "xe1xbcxaf": String.fromCharCode(7983),
+                "xe1xbcxb0": String.fromCharCode(7984),
+                "xe1xbcxb1": String.fromCharCode(7985),
+                "xe1xbcxb2": String.fromCharCode(7986),
+                "xe1xbcxb3": String.fromCharCode(7987),
+                "xe1xbcxb4": String.fromCharCode(7988),
+                "xe1xbcxb5": String.fromCharCode(7989),
+                "xe1xbcxb6": String.fromCharCode(7990),
+                "xe1xbcxb7": String.fromCharCode(7991),
+                "xe1xbcxb8": String.fromCharCode(7992),
+                "xe1xbcxb9": String.fromCharCode(7993),
+                "xe1xbcxba": String.fromCharCode(7994),
+                "xe1xbcxbb": String.fromCharCode(7995),
+                "xe1xbcxbc": String.fromCharCode(7996),
+                "xe1xbcxbd": String.fromCharCode(7997),
+                "xe1xbcxbe": String.fromCharCode(7998),
+                "xe1xbcxbf": String.fromCharCode(7999),
+                "xe1xbdx80": String.fromCharCode(8e3),
+                "xe1xbdx81": String.fromCharCode(8001),
+                "xe1xbdx82": String.fromCharCode(8002),
+                "xe1xbdx83": String.fromCharCode(8003),
+                "xe1xbdx84": String.fromCharCode(8004),
+                "xe1xbdx85": String.fromCharCode(8005),
+                "xe1xbdx86": String.fromCharCode(8006),
+                "xe1xbdx87": String.fromCharCode(8007),
+                "xe1xbdx88": String.fromCharCode(8008),
+                "xe1xbdx89": String.fromCharCode(8009),
+                "xe1xbdx8a": String.fromCharCode(8010),
+                "xe1xbdx8b": String.fromCharCode(8011),
+                "xe1xbdx8c": String.fromCharCode(8012),
+                "xe1xbdx8d": String.fromCharCode(8013),
+                "xe1xbdx8e": String.fromCharCode(8014),
+                "xe1xbdx8f": String.fromCharCode(8015),
+                "xe1xbdx90": String.fromCharCode(8016),
+                "xe1xbdx91": String.fromCharCode(8017),
+                "xe1xbdx92": String.fromCharCode(8018),
+                "xe1xbdx93": String.fromCharCode(8019),
+                "xe1xbdx94": String.fromCharCode(8020),
+                "xe1xbdx95": String.fromCharCode(8021),
+                "xe1xbdx96": String.fromCharCode(8022),
+                "xe1xbdx97": String.fromCharCode(8023),
+                "xe1xbdx98": String.fromCharCode(8024),
+                "xe1xbdx99": String.fromCharCode(8025),
+                "xe1xbdx9a": String.fromCharCode(8026),
+                "xe1xbdx9b": String.fromCharCode(8027),
+                "xe1xbdx9c": String.fromCharCode(8028),
+                "xe1xbdx9d": String.fromCharCode(8029),
+                "xe1xbdx9e": String.fromCharCode(8030),
+                "xe1xbdx9f": String.fromCharCode(8031),
+                "xe1xbdxa0": String.fromCharCode(8032),
+                "xe1xbdxa1": String.fromCharCode(8033),
+                "xe1xbdxa2": String.fromCharCode(8034),
+                "xe1xbdxa3": String.fromCharCode(8035),
+                "xe1xbdxa4": String.fromCharCode(8036),
+                "xe1xbdxa5": String.fromCharCode(8037),
+                "xe1xbdxa6": String.fromCharCode(8038),
+                "xe1xbdxa7": String.fromCharCode(8039),
+                "xe1xbdxa8": String.fromCharCode(8040),
+                "xe1xbdxa9": String.fromCharCode(8041),
+                "xe1xbdxaa": String.fromCharCode(8042),
+                "xe1xbdxab": String.fromCharCode(8043),
+                "xe1xbdxac": String.fromCharCode(8044),
+                "xe1xbdxad": String.fromCharCode(8045),
+                "xe1xbdxae": String.fromCharCode(8046),
+                "xe1xbdxaf": String.fromCharCode(8047),
+                "xe1xbdxb0": String.fromCharCode(8048),
+                "xe1xbdxb1": String.fromCharCode(8049),
+                "xe1xbdxb2": String.fromCharCode(8050),
+                "xe1xbdxb3": String.fromCharCode(8051),
+                "xe1xbdxb4": String.fromCharCode(8052),
+                "xe1xbdxb5": String.fromCharCode(8053),
+                "xe1xbdxb6": String.fromCharCode(8054),
+                "xe1xbdxb7": String.fromCharCode(8055),
+                "xe1xbdxb8": String.fromCharCode(8056),
+                "xe1xbdxb9": String.fromCharCode(8057),
+                "xe1xbdxba": String.fromCharCode(8058),
+                "xe1xbdxbb": String.fromCharCode(8059),
+                "xe1xbdxbc": String.fromCharCode(8060),
+                "xe1xbdxbd": String.fromCharCode(8061),
+                "xe1xbdxbe": String.fromCharCode(8062),
+                "xe1xbdxbf": String.fromCharCode(8063),
+                "xc2xa1": String.fromCharCode(161),
+                "xc2xa2": String.fromCharCode(162),
+                "xc2xa3": String.fromCharCode(163),
+                "xc2xa4": String.fromCharCode(164),
+                "xc2xa5": String.fromCharCode(165),
+                "xc2xa6": String.fromCharCode(166),
+                "xc2xa7": String.fromCharCode(167),
+                "xc2xa8": String.fromCharCode(168),
+                "xc2xa9": String.fromCharCode(169),
+                "xc2xaa": String.fromCharCode(170),
+                "xc2xab": String.fromCharCode(171),
+                "xc2xac": String.fromCharCode(172),
+                "xc2xad": String.fromCharCode(173),
+                "xc2xae": String.fromCharCode(174),
+                "xc2xaf": String.fromCharCode(175),
+                "xc2xb0": String.fromCharCode(176),
+                "xc2xb1": String.fromCharCode(177),
+                "xc2xb2": String.fromCharCode(178),
+                "xc2xb3": String.fromCharCode(179),
+                "xc2xb4": String.fromCharCode(180),
+                "xc2xb5": String.fromCharCode(181),
+                "xc2xb6": String.fromCharCode(182),
+                "xc2xb7": String.fromCharCode(183),
+                "xc2xb8": String.fromCharCode(184),
+                "xc2xb9": String.fromCharCode(185),
+                "xc2xba": String.fromCharCode(186),
+                "xc2xbb": String.fromCharCode(187),
+                "xc2xbc": String.fromCharCode(188),
+                "xc2xbd": String.fromCharCode(189),
+                "xc2xbe": String.fromCharCode(190),
+                "xc2xbf": String.fromCharCode(191),
+                "xc3x80": String.fromCharCode(192),
+                "xc3x81": String.fromCharCode(193),
+                "xc3x82": String.fromCharCode(194),
+                "xc3x83": String.fromCharCode(195),
+                "xc3x84": String.fromCharCode(196),
+                "xc3x85": String.fromCharCode(197),
+                "xc3x86": String.fromCharCode(198),
+                "xc3x87": String.fromCharCode(199),
+                "xc3x88": String.fromCharCode(200),
+                "xc3x89": String.fromCharCode(201),
+                "xc3x8a": String.fromCharCode(202),
+                "xc3x8b": String.fromCharCode(203),
+                "xc3x8c": String.fromCharCode(204),
+                "xc3x8d": String.fromCharCode(205),
+                "xc3x8e": String.fromCharCode(206),
+                "xc3x8f": String.fromCharCode(207),
+                "xc3x90": String.fromCharCode(208),
+                "xc3x91": String.fromCharCode(209),
+                "xc3x92": String.fromCharCode(210),
+                "xc3x93": String.fromCharCode(211),
+                "xc3x94": String.fromCharCode(212),
+                "xc3x95": String.fromCharCode(213),
+                "xc3x96": String.fromCharCode(214),
+                "xc3x97": String.fromCharCode(215),
+                "xc3x98": String.fromCharCode(216),
+                "xc3x99": String.fromCharCode(217),
+                "xc3x9a": String.fromCharCode(218),
+                "xc3x9b": String.fromCharCode(219),
+                "xc3x9c": String.fromCharCode(220),
+                "xc3x9d": String.fromCharCode(221),
+                "xc3x9e": String.fromCharCode(222),
+                "xc3x9f": String.fromCharCode(223),
+                "xc3xa0": String.fromCharCode(224),
+                "xc3xa1": String.fromCharCode(225),
+                "xc3xa2": String.fromCharCode(226),
+                "xc3xa3": String.fromCharCode(227),
+                "xc3xa4": String.fromCharCode(228),
+                "xc3xa5": String.fromCharCode(229),
+                "xc3xa6": String.fromCharCode(230),
+                "xc3xa7": String.fromCharCode(231),
+                "xc3xa8": String.fromCharCode(232),
+                "xc3xa9": String.fromCharCode(233),
+                "xc3xaa": String.fromCharCode(234),
+                "xc3xab": String.fromCharCode(235),
+                "xc3xac": String.fromCharCode(236),
+                "xc3xad": String.fromCharCode(237),
+                "xc3xae": String.fromCharCode(238),
+                "xc3xaf": String.fromCharCode(239),
+                "xc3xb0": String.fromCharCode(240),
+                "xc3xb1": String.fromCharCode(241),
+                "xc3xb2": String.fromCharCode(242),
+                "xc3xb3": String.fromCharCode(243),
+                "xc3xb4": String.fromCharCode(244),
+                "xc3xb5": String.fromCharCode(245),
+                "xc3xb6": String.fromCharCode(246),
+                "xc3xb7": String.fromCharCode(247),
+                "xc3xb8": String.fromCharCode(248),
+                "xc3xb9": String.fromCharCode(249),
+                "xc3xba": String.fromCharCode(250),
+                "xc3xbb": String.fromCharCode(251),
+                "xc3xbc": String.fromCharCode(252),
+                "xc3xbd": String.fromCharCode(253),
+                "xc3xbe": String.fromCharCode(254),
+                "xc3xbf": String.fromCharCode(255),
+                "xc4x80": String.fromCharCode(256),
+                "xc4x81": String.fromCharCode(257),
+                "xc4x82": String.fromCharCode(258),
+                "xc4x83": String.fromCharCode(259),
+                "xc4x84": String.fromCharCode(260),
+                "xc4x85": String.fromCharCode(261),
+                "xc4x86": String.fromCharCode(262),
+                "xc4x87": String.fromCharCode(263),
+                "xc4x88": String.fromCharCode(264),
+                "xc4x89": String.fromCharCode(265),
+                "xc4x8a": String.fromCharCode(266),
+                "xc4x8b": String.fromCharCode(267),
+                "xc4x8c": String.fromCharCode(268),
+                "xc4x8d": String.fromCharCode(269),
+                "xc4x8e": String.fromCharCode(270),
+                "xc4x8f": String.fromCharCode(271),
+                "xc4x90": String.fromCharCode(272),
+                "xc4x91": String.fromCharCode(273),
+                "xc4x92": String.fromCharCode(274),
+                "xc4x93": String.fromCharCode(275),
+                "xc4x94": String.fromCharCode(276),
+                "xc4x95": String.fromCharCode(277),
+                "xc4x96": String.fromCharCode(278),
+                "xc4x97": String.fromCharCode(279),
+                "xc4x98": String.fromCharCode(280),
+                "xc4x99": String.fromCharCode(281),
+                "xc4x9a": String.fromCharCode(282),
+                "xc4x9b": String.fromCharCode(283),
+                "xc4x9c": String.fromCharCode(284),
+                "xc4x9d": String.fromCharCode(285),
+                "xc4x9e": String.fromCharCode(286),
+                "xc4x9f": String.fromCharCode(287),
+                "xc4xa0": String.fromCharCode(288),
+                "xc4xa1": String.fromCharCode(289),
+                "xc4xa2": String.fromCharCode(290),
+                "xc4xa3": String.fromCharCode(291),
+                "xc4xa4": String.fromCharCode(292),
+                "xc4xa5": String.fromCharCode(293),
+                "xc4xa6": String.fromCharCode(294),
+                "xc4xa7": String.fromCharCode(295),
+                "xc4xa8": String.fromCharCode(296),
+                "xc4xa9": String.fromCharCode(297),
+                "xc4xaa": String.fromCharCode(298),
+                "xc4xab": String.fromCharCode(299),
+                "xc4xac": String.fromCharCode(300),
+                "xc4xad": String.fromCharCode(301),
+                "xc4xae": String.fromCharCode(302),
+                "xc4xaf": String.fromCharCode(303),
+                "xc4xb0": String.fromCharCode(304),
+                "xc4xb1": String.fromCharCode(305),
+                "xc4xb2": String.fromCharCode(306),
+                "xc4xb3": String.fromCharCode(307),
+                "xc4xb4": String.fromCharCode(308),
+                "xc4xb5": String.fromCharCode(309),
+                "xc4xb6": String.fromCharCode(310),
+                "xc4xb7": String.fromCharCode(311),
+                "xc4xb8": String.fromCharCode(312),
+                "xc4xb9": String.fromCharCode(313),
+                "xc4xba": String.fromCharCode(314),
+                "xc4xbb": String.fromCharCode(315),
+                "xc4xbc": String.fromCharCode(316),
+                "xc4xbd": String.fromCharCode(317),
+                "xc4xbe": String.fromCharCode(318),
+                "xc4xbf": String.fromCharCode(319),
+                "xc5x80": String.fromCharCode(320),
+                "xc5x81": String.fromCharCode(321),
+                "xc5x82": String.fromCharCode(322),
+                "xc5x83": String.fromCharCode(323),
+                "xc5x84": String.fromCharCode(324),
+                "xc5x85": String.fromCharCode(325),
+                "xc5x86": String.fromCharCode(326),
+                "xc5x87": String.fromCharCode(327),
+                "xc5x88": String.fromCharCode(328),
+                "xc5x89": String.fromCharCode(329),
+                "xc5x8a": String.fromCharCode(330),
+                "xc5x8b": String.fromCharCode(331),
+                "xc5x8c": String.fromCharCode(332),
+                "xc5x8d": String.fromCharCode(333),
+                "xc5x8e": String.fromCharCode(334),
+                "xc5x8f": String.fromCharCode(335),
+                "xc5x90": String.fromCharCode(336),
+                "xc5x91": String.fromCharCode(337),
+                "xc5x92": String.fromCharCode(338),
+                "xc5x93": String.fromCharCode(339),
+                "xc5x94": String.fromCharCode(340),
+                "xc5x95": String.fromCharCode(341),
+                "xc5x96": String.fromCharCode(342),
+                "xc5x97": String.fromCharCode(343),
+                "xc5x98": String.fromCharCode(344),
+                "xc5x99": String.fromCharCode(345),
+                "xc5x9a": String.fromCharCode(346),
+                "xc5x9b": String.fromCharCode(347),
+                "xc5x9c": String.fromCharCode(348),
+                "xc5x9d": String.fromCharCode(349),
+                "xc5x9e": String.fromCharCode(350),
+                "xc5x9f": String.fromCharCode(351),
+                "xc5xa0": String.fromCharCode(352),
+                "xc5xa1": String.fromCharCode(353),
+                "xc5xa2": String.fromCharCode(354),
+                "xc5xa3": String.fromCharCode(355),
+                "xc5xa4": String.fromCharCode(356),
+                "xc5xa5": String.fromCharCode(357),
+                "xc5xa6": String.fromCharCode(358),
+                "xc5xa7": String.fromCharCode(359),
+                "xc5xa8": String.fromCharCode(360),
+                "xc5xa9": String.fromCharCode(361),
+                "xc5xaa": String.fromCharCode(362),
+                "xc5xab": String.fromCharCode(363),
+                "xc5xac": String.fromCharCode(364),
+                "xc5xad": String.fromCharCode(365),
+                "xc5xae": String.fromCharCode(366),
+                "xc5xaf": String.fromCharCode(367),
+                "xc5xb0": String.fromCharCode(368),
+                "xc5xb1": String.fromCharCode(369),
+                "xc5xb2": String.fromCharCode(370),
+                "xc5xb3": String.fromCharCode(371),
+                "xc5xb4": String.fromCharCode(372),
+                "xc5xb5": String.fromCharCode(373),
+                "xc5xb6": String.fromCharCode(374),
+                "xc5xb7": String.fromCharCode(375),
+                "xc5xb8": String.fromCharCode(376),
+                "xc5xb9": String.fromCharCode(377),
+                "xc5xba": String.fromCharCode(378),
+                "xc5xbb": String.fromCharCode(379),
+                "xc5xbc": String.fromCharCode(380),
+                "xc5xbd": String.fromCharCode(381),
+                "xc5xbe": String.fromCharCode(382),
+                "xc5xbf": String.fromCharCode(383),
+                "xc6x80": String.fromCharCode(384),
+                "xc6x81": String.fromCharCode(385),
+                "xc6x82": String.fromCharCode(386),
+                "xc6x83": String.fromCharCode(387),
+                "xc6x84": String.fromCharCode(388),
+                "xc6x85": String.fromCharCode(389),
+                "xc6x86": String.fromCharCode(390),
+                "xc6x87": String.fromCharCode(391),
+                "xc6x88": String.fromCharCode(392),
+                "xc6x89": String.fromCharCode(393),
+                "xc6x8a": String.fromCharCode(394),
+                "xc6x8b": String.fromCharCode(395),
+                "xc6x8c": String.fromCharCode(396),
+                "xc6x8d": String.fromCharCode(397),
+                "xc6x8e": String.fromCharCode(398),
+                "xc6x8f": String.fromCharCode(399),
+                "xc6x90": String.fromCharCode(400),
+                "xc6x91": String.fromCharCode(401),
+                "xc6x92": String.fromCharCode(402),
+                "xc6x93": String.fromCharCode(403),
+                "xc6x94": String.fromCharCode(404),
+                "xc6x95": String.fromCharCode(405),
+                "xc6x96": String.fromCharCode(406),
+                "xc6x97": String.fromCharCode(407),
+                "xc6x98": String.fromCharCode(408),
+                "xc6x99": String.fromCharCode(409),
+                "xc6x9a": String.fromCharCode(410),
+                "xc6x9b": String.fromCharCode(411),
+                "xc6x9c": String.fromCharCode(412),
+                "xc6x9d": String.fromCharCode(413),
+                "xc6x9e": String.fromCharCode(414),
+                "xc6x9f": String.fromCharCode(415),
+                "xc6xa0": String.fromCharCode(416),
+                "xc6xa1": String.fromCharCode(417),
+                "xc6xa2": String.fromCharCode(418),
+                "xc6xa3": String.fromCharCode(419),
+                "xc6xa4": String.fromCharCode(420),
+                "xc6xa5": String.fromCharCode(421),
+                "xc6xa6": String.fromCharCode(422),
+                "xc6xa7": String.fromCharCode(423),
+                "xc6xa8": String.fromCharCode(424),
+                "xc6xa9": String.fromCharCode(425),
+                "xc6xaa": String.fromCharCode(426),
+                "xc6xab": String.fromCharCode(427),
+                "xc6xac": String.fromCharCode(428),
+                "xc6xad": String.fromCharCode(429),
+                "xc6xae": String.fromCharCode(430),
+                "xc6xaf": String.fromCharCode(431),
+                "xc6xb0": String.fromCharCode(432),
+                "xc6xb1": String.fromCharCode(433),
+                "xc6xb2": String.fromCharCode(434),
+                "xc6xb3": String.fromCharCode(435),
+                "xc6xb4": String.fromCharCode(436),
+                "xc6xb5": String.fromCharCode(437),
+                "xc6xb6": String.fromCharCode(438),
+                "xc6xb7": String.fromCharCode(439),
+                "xc6xb8": String.fromCharCode(440),
+                "xc6xb9": String.fromCharCode(441),
+                "xc6xba": String.fromCharCode(442),
+                "xc6xbb": String.fromCharCode(443),
+                "xc6xbc": String.fromCharCode(444),
+                "xc6xbd": String.fromCharCode(445),
+                "xc6xbe": String.fromCharCode(446),
+                "xc6xbf": String.fromCharCode(447),
+                "xc7x80": String.fromCharCode(448),
+                "xc7x81": String.fromCharCode(449),
+                "xc7x82": String.fromCharCode(450),
+                "xc7x83": String.fromCharCode(451),
+                "xc7x84": String.fromCharCode(452),
+                "xc7x85": String.fromCharCode(453),
+                "xc7x86": String.fromCharCode(454),
+                "xc7x87": String.fromCharCode(455),
+                "xc7x88": String.fromCharCode(456),
+                "xc7x89": String.fromCharCode(457),
+                "xc7x8a": String.fromCharCode(458),
+                "xc7x8b": String.fromCharCode(459),
+                "xc7x8c": String.fromCharCode(460),
+                "xc7x8d": String.fromCharCode(461),
+                "xc7x8e": String.fromCharCode(462),
+                "xc7x8f": String.fromCharCode(463),
+                "xc7x90": String.fromCharCode(464),
+                "xc7x91": String.fromCharCode(465),
+                "xc7x92": String.fromCharCode(466),
+                "xc7x93": String.fromCharCode(467),
+                "xc7x94": String.fromCharCode(468),
+                "xc7x95": String.fromCharCode(469),
+                "xc7x96": String.fromCharCode(470),
+                "xc7x97": String.fromCharCode(471),
+                "xc7x98": String.fromCharCode(472),
+                "xc7x99": String.fromCharCode(473),
+                "xc7x9a": String.fromCharCode(474),
+                "xc7x9b": String.fromCharCode(475),
+                "xc7x9c": String.fromCharCode(476),
+                "xc7x9d": String.fromCharCode(477),
+                "xc7x9e": String.fromCharCode(478),
+                "xc7x9f": String.fromCharCode(479),
+                "xc7xa0": String.fromCharCode(480),
+                "xc7xa1": String.fromCharCode(481),
+                "xc7xa2": String.fromCharCode(482),
+                "xc7xa3": String.fromCharCode(483),
+                "xc7xa4": String.fromCharCode(484),
+                "xc7xa5": String.fromCharCode(485),
+                "xc7xa6": String.fromCharCode(486),
+                "xc7xa7": String.fromCharCode(487),
+                "xc7xa8": String.fromCharCode(488),
+                "xc7xa9": String.fromCharCode(489),
+                "xc7xaa": String.fromCharCode(490),
+                "xc7xab": String.fromCharCode(491),
+                "xc7xac": String.fromCharCode(492),
+                "xc7xad": String.fromCharCode(493),
+                "xc7xae": String.fromCharCode(494),
+                "xc7xaf": String.fromCharCode(495),
+                "xc7xb0": String.fromCharCode(496),
+                "xc7xb1": String.fromCharCode(497),
+                "xc7xb2": String.fromCharCode(498),
+                "xc7xb3": String.fromCharCode(499),
+                "xc7xb4": String.fromCharCode(500),
+                "xc7xb5": String.fromCharCode(501),
+                "xc7xb6": String.fromCharCode(502),
+                "xc7xb7": String.fromCharCode(503),
+                "xc7xb8": String.fromCharCode(504),
+                "xc7xb9": String.fromCharCode(505),
+                "xc7xba": String.fromCharCode(506),
+                "xc7xbb": String.fromCharCode(507),
+                "xc7xbc": String.fromCharCode(508),
+                "xc7xbd": String.fromCharCode(509),
+                "xc7xbe": String.fromCharCode(510),
+                "xc7xbf": String.fromCharCode(511)
+            };
+        
+            for (var key in expressions) {
+                if (expressions.hasOwnProperty(key) && str.includes(key)) {
+                    str = str.replace(new RegExp(key, 'g'), expressions[key]);
+                }
+            }
+        
+            return str;
+        }
+
+        $scope.isXML = function(xml) {
+            try {
+                $.parseXML(xml);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        $scope.isJson = function(json) {
+            try {
+                JSON.parse(json);
+                return true;
+            } catch {
+                return false;
+            }
+        }
+}]);
+
+../gulpfile.js
+var gulp = require('gulp'); 
+var useref = require('gulp-useref');
+var gulpIf = require('gulp-if');
+var cssnano = require('gulp-cssnano');
+var uglify = require('gulp-uglify');
+
+gulp.task('useref', function(){
+  return gulp.src('app/*.html')
+    .pipe(useref())
+    .pipe(gulpIf('*.js', uglify()))
+    .pipe(gulpIf('*.css', cssnano()))
+    .pipe(gulp.dest('dist'))
+});
+
+package.json
 {
-  "name": "redux-essentials-example",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@reduxjs/toolkit": "^1.6.1",
-    "@testing-library/jest-dom": "^4.2.4",
-    "@testing-library/react": "^9.5.0",
-    "@testing-library/user-event": "^7.2.1",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
-    "react-redux": "^7.2.5",
-    "react-scripts": "4.0.3"
-  },
+  "name": "package",
+  "version": "1.0.0",
+  "description": "convert utf8 to unicode",
+  "main": "index.controller.js",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "test": "echo \"error\" no test specified\""
   },
-  "eslintConfig": {
-    "extends": "react-app"
+  "author": "Pham Ngoc Vinh",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-preset-es2015": "^6.24.1",
+    "gulp": "^4.0.2",
+    "gulp-babel": "^8.0.0",
+    "gulp-uglify": "^3.0.2",
+    "gulp-useref": "^5.0.0"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "dependencies": {
+    "gulp-cssnano": "^2.1.3"
   }
 }
